@@ -37,7 +37,7 @@ class Config:
     INITIAL_PRINCIPAL = 1_000_000.0  # 初始本金
     COMMISSION_RATE = 0.0002         # 交易佣金
     SLIPPAGE = 0.0001                # 滑点
-    RISK_FREE_RATE = 0.03            # 无风险利率
+    RISK_FREE_RATE = 0.018            # 无风险利率
 
     # ==============================
     # 3. 策略参数配置 (Strategy Params)
@@ -63,4 +63,5 @@ class Config:
     # ==============================
     # 4. 系统设置 (System)
     # =============================
+
     RANDOM_SEED = 42                 # 随机种子
