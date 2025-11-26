@@ -1,4 +1,3 @@
-# To run: E:/VSCode_Project/rent_project/.venv/Scripts/python.exe -m streamlit run E:/VSCode_Project/quant_research/app_new.py
 import streamlit as st
 import pandas as pd
 import os
@@ -281,7 +280,7 @@ if data is not None:
             # st.markdown('<div class="content-card">', unsafe_allow_html=True)
             st.markdown("### 📋 详细绩效对比表")
             st_table = style_dataframe(period_summary)
-            st.dataframe(st_table, width='stretch')
+            st.dataframe(st_table, width='stretch', height= 35 * (len(period_summary) + 1) + 3)
             st.markdown('</div>', unsafe_allow_html=True)
 
         with st.container():
