@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import os
-import matplotlib.colors as mcolors
 from config import Config
 from core.data_handlers import ExcelHandler
 from core.factor_lib import TechnicalFactors
@@ -295,4 +294,5 @@ if data is not None:
             st.markdown('</div>', unsafe_allow_html=True)
             
     else:
+
         st.warning("所选区间无数据。")
