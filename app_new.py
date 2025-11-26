@@ -102,7 +102,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================================
-# 1. 核心计算函数 (保持不变)
+# 1. 核心计算函数
 # ==============================================
 
 @st.cache_data
@@ -123,8 +123,14 @@ def load_and_process_data():
         st.error(f"数据处理出错: {e}")
         return None
 
-@st.cache_data
-def run_strategy_and_backtest(data):
+# 修改 run_strategy_and_backtest 以接收动态参数
+def run_strategy_and_backtest(data, 
+                              risk_free_rate=Config.RISK_FREE_RATE,
+                              commission_rate=Config.COMMISSION_RATE,
+                              initial_principal=Config.INITIAL_PRINCIPAL,
+                              slippage=Config.SLIPPAGE):
+    
+    # 这里使用 Config 中的默认阈值，如果需要也可以通过参数传入
     strategy = FRAMA_RSI_bb_Strategy(
         data, 
         strong_threshold=Config.THRESHOLD_STRONG_TREND,
@@ -135,12 +141,20 @@ def run_strategy_and_backtest(data):
         bb_bw_high_k=Config.BB_BW_HIGH_THRESHOLD
     )
     data_with_signals = strategy.generate_signals()
-    backtester = VectorBacktester(commission=Config.COMMISSION_RATE, slippage=Config.SLIPPAGE, initial_principal=Config.INITIAL_PRINCIPAL, risk_free_rate=Config.RISK_FREE_RATE)
+    
+    # 使用传入的动态参数初始化回测引擎
+    backtester = VectorBacktester(
+        commission=commission_rate, 
+        slippage=slippage, 
+        initial_principal=initial_principal, 
+        risk_free_rate=risk_free_rate
+    )
+    
     full_results = backtester.run(data_with_signals)
     return backtester, full_results
 
 def style_dataframe(df):
-    """应用精确的格式化和智能的红绿配色 (逻辑保持不变)"""
+    """应用精确的格式化和智能的红绿配色"""
     rename_dict = {
         'Total Return': 'Total Return (总收益率)',
         'Annualized Return': 'Annualized Return (年化收益率)',
@@ -188,10 +202,9 @@ def style_dataframe(df):
         if not isinstance(val, (int, float)): return ''
         if val > 0: return 'color: #D32F2F; font-weight: bold'
         if val < 0: return 'color: #388E3C; font-weight: bold'
-        return 'color: #333333' # 稍微改深一点的黑色
+        return 'color: #333333' 
     
     styler.map(color_text)
-    # 表格样式微调，增加行高
     styler.set_properties(**{
         'border-bottom': '1px solid #f0f0f0',
         'text-align': 'right',
@@ -220,6 +233,40 @@ with st.sidebar:
     if data is not None:
         st.success(f"✅ 数据已就绪 ({Config.ASSET_SYMBOL})")
         
+        # --- 动态参数调整区域 ---
+        with st.expander("🛠️ 账户与回测参数", expanded=False):
+            input_risk_free_rate = st.number_input(
+                "无风险利率 (Risk Free Rate)", 
+                min_value=0.0, max_value=0.2, 
+                value=Config.RISK_FREE_RATE, 
+                step=0.005, 
+                format="%.3f",
+                help="用于计算夏普比率和Sortino比率的基准利率"
+            )
+            
+            input_commission = st.number_input(
+                "交易佣金 (Commission)", 
+                min_value=0.0, max_value=0.01, 
+                value=Config.COMMISSION_RATE, 
+                step=0.0001, 
+                format="%.4f"
+            )
+            
+            input_slippage = st.number_input(
+                "交易滑点 (Slippage)", 
+                min_value=0.0, max_value=0.01, 
+                value=Config.SLIPPAGE, 
+                step=0.0001, 
+                format="%.4f"
+            )
+            
+            input_principal = st.number_input(
+                "初始本金 (Principal)", 
+                min_value=10000.0, 
+                value=Config.INITIAL_PRINCIPAL, 
+                step=10000.0
+            )
+
         min_date = data.index.min().date()
         max_date = data.index.max().date()
         cfg_start = pd.to_datetime(Config.START_DATE).date()
@@ -240,10 +287,18 @@ with st.sidebar:
             
         st.markdown("---")
         st.caption(f"📊 数据实际范围: {min_date} ~ {max_date}")
-        st.caption("💡 提示: 调整日期后图表将自动刷新")
+        st.caption("💡 提示: 调整参数后图表将自动刷新")
 
 if data is not None:
-    backtester, full_results = run_strategy_and_backtest(data)
+    # 传入用户界面设置的参数，而不是 Config 中的静态值
+    backtester, full_results = run_strategy_and_backtest(
+        data,
+        risk_free_rate=input_risk_free_rate,
+        commission_rate=input_commission,
+        initial_principal=input_principal,
+        slippage=input_slippage
+    )
+    
     period_df, period_summary = backtester.analyze_range(full_results, str(start_date), str(end_date))
     
     if period_df is not None:
@@ -253,7 +308,6 @@ if data is not None:
         sharpe = period_summary.loc['Sharpe Ratio', 'Strategy']
         alpha = period_summary.loc['Alpha (Excess Return)', 'Strategy']
         
-        # 使用列布局，并注入自定义 HTML 卡片
         col1, col2, col3, col4 = st.columns(4)
         
         def metric_card(label, value):
@@ -269,12 +323,9 @@ if data is not None:
         with col3: st.markdown(metric_card("夏普比率", f"{sharpe:.3f}"), unsafe_allow_html=True)
         with col4: st.markdown(metric_card("Alpha 超额", f"{alpha:.2%}"), unsafe_allow_html=True)
         
-        st.markdown("<br>", unsafe_allow_html=True) # 增加间距
+        st.markdown("<br>", unsafe_allow_html=True) 
 
         # --- 详细报表区 ---
-        # 使用 st.container 模拟白色卡片背景 (但在 Streamlit 纯 Python 中只能尽量模拟)
-        # 这里我们直接把内容放进去，样式由上面的 CSS .stDataFrame 控制
-        
         with st.container():
             st.markdown('<div class="content-card">', unsafe_allow_html=True)
             st.markdown("### 📋 详细绩效对比表")
@@ -288,11 +339,9 @@ if data is not None:
             st.markdown("### 📈 策略全景走势图")
             with st.spinner("正在绘制交互式图表..."):
                 fig = Visualizer.plot_backtest_result(period_df, filename=None)
-                # 调整图表背景色以融入卡片
                 fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig, use_container_width=True, height=1000)
             st.markdown('</div>', unsafe_allow_html=True)
             
     else:
-
         st.warning("所选区间无数据。")
