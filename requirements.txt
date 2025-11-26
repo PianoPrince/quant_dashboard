@@ -1,1 +1,6 @@
-streamlit pandas plotly openpyxl matplotlib akshare
+streamlit
+pandas
+plotly
+openpyxl
+matplotlib
+akshare
