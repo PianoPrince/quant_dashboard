@@ -4,14 +4,9 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
 
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import pandas as pd
-import numpy as np
-
 class Visualizer:
     """
-    V5.5 可视化引擎 (支持动态阈值参数)
+    V5.6 可视化引擎 (修复参数接收问题)
     """
 
     @staticmethod
@@ -19,7 +14,13 @@ class Visualizer:
                              strong_th=1.4, weak_th=1.7, rsi_high=70, rsi_low=30):
         """
         绘制全功能回测报告
-        增加动态参数输入，确保图表上的阈值线与策略实际参数一致
+        
+        :param df: 回测结果 DataFrame
+        :param filename: (可选) 保存文件名
+        :param strong_th: 强趋势阈值 (D值)
+        :param weak_th: 弱趋势阈值 (D值)
+        :param rsi_high: RSI 超买阈值
+        :param rsi_low: RSI 超卖阈值
         """
         plot_data = df.copy()
         
@@ -34,15 +35,13 @@ class Visualizer:
         bb_ub = plot_data.get('BB_UB', pd.Series(np.nan, index=plot_data.index))
         bb_lb = plot_data.get('BB_LB', pd.Series(np.nan, index=plot_data.index))
 
-        # [核心修复] 使用传入的动态参数计算信号掩码，而不是写死
+        # 使用传入的动态参数计算信号掩码
         mask_rsi_buy = rsi < rsi_low
         mask_rsi_sell = rsi > rsi_high
         mask_bb_touch_lb = close <= bb_lb
         
-        # D值强趋势启动信号：使用 strong_th
         mask_d_strong_entry = (d_val < strong_th) & (d_val.shift(1) >= strong_th)
 
-        # FRAMA 状态分段：使用 strong_th / weak_th
         mask_breakdown = close < frama
         mask_strong = (~mask_breakdown) & (d_val < strong_th)
         mask_weak = (~mask_breakdown) & (d_val >= strong_th) & (d_val < weak_th)
@@ -74,25 +73,25 @@ class Visualizer:
         # Row 1: K线 + 布林带 + FRAMA
         fig.add_trace(go.Scatter(x=plot_data.index, y=bb_ub, mode='lines', line=dict(width=0), showlegend=False, hoverinfo='skip'), row=1, col=1)
         fig.add_trace(go.Scatter(x=plot_data.index, y=bb_lb, mode='lines', line=dict(width=0), fill='tonexty', fillcolor='rgba(128, 0, 128, 0.1)', name='布林带', hoverinfo='skip'), row=1, col=1)
-        fig.add_trace(go.Candlestick(x=plot_data.index, open=plot_data['open'], high=plot_data['high'], low=plot_data['low'], close=plot_data['close'], name='K线'), row=1, col=1)
+        fig.add_trace(go.Candlestick(x=plot_data.index, open=plot_data['open'], high=plot_data['high'], low=plot_data['low'], close=plot_data['close'], name='K线', increasing_line_color='#ef5350', decreasing_line_color='#26a69a'), row=1, col=1)
         fig.add_trace(go.Scatter(x=plot_data.index, y=frama_strong, mode='lines', line=dict(color='blue', width=2), name='强趋势'), row=1, col=1)
         fig.add_trace(go.Scatter(x=plot_data.index, y=frama_weak, mode='lines', line=dict(color='orange', width=2), name='弱趋势'), row=1, col=1)
         fig.add_trace(go.Scatter(x=plot_data.index, y=frama_noise, mode='lines', line=dict(color='gray', width=1, dash='dot'), name='噪音'), row=1, col=1)
         fig.add_trace(go.Scatter(x=plot_data.index, y=frama_breakdown, mode='lines', line=dict(color='purple', width=2, dash='dash'), name='破坏'), row=1, col=1)
         fig.add_trace(go.Scatter(x=plot_data.index, y=equity_rebased, mode='lines', line=dict(color='#FFD700', width=2), name='策略净值'), row=1, col=1)
         
-        # Markers: 动态 Label 显示当前阈值
+        # Markers
         fig.add_trace(go.Scatter(x=plot_data[mask_rsi_buy].index, y=low[mask_rsi_buy] * 0.99, mode='markers', marker=dict(symbol='triangle-up', size=8, color='#00C853'), name=f'RSI超卖(<{rsi_low})', hovertemplate=f'RSI超卖: %{{x|%Y-%m-%d}}'), row=1, col=1)
         fig.add_trace(go.Scatter(x=plot_data[mask_rsi_sell].index, y=high[mask_rsi_sell] * 1.01, mode='markers', marker=dict(symbol='triangle-down', size=8, color='#D50000'), name=f'RSI超买(>{rsi_high})', hovertemplate=f'RSI超买: %{{x|%Y-%m-%d}}'), row=1, col=1)
         fig.add_trace(go.Scatter(x=plot_data[mask_bb_touch_lb].index, y=low[mask_bb_touch_lb], mode='markers', marker=dict(symbol='circle-open', size=6, color='blue', line=dict(width=2)), name='触及下轨', hovertemplate='布林带支撑'), row=1, col=1)
         fig.add_trace(go.Scatter(x=plot_data[mask_d_strong_entry].index, y=high[mask_d_strong_entry] * 1.02, mode='markers', marker=dict(symbol='diamond', size=7, color='purple'), name=f'强趋势启动(D<{strong_th})', hovertemplate='强趋势启动'), row=1, col=1)
 
-        # Row 2: D值 (动态阈值线)
+        # Row 2: D值
         fig.add_trace(go.Scatter(x=plot_data.index, y=d_val, line=dict(color='#5c6bc0', width=1), name='D值', hovertemplate='%{y:.3f}'), row=2, col=1)
         fig.add_hline(y=strong_th, line_dash="dot", line_color="green", row=2, col=1, annotation_text=f"强趋势 ({strong_th})")
         fig.add_hline(y=weak_th, line_dash="dot", line_color="red", row=2, col=1, annotation_text=f"弱趋势 ({weak_th})")
 
-        # Row 3: RSI (动态阈值线)
+        # Row 3: RSI
         fig.add_trace(go.Scatter(x=plot_data.index, y=rsi, line=dict(color='#ab47bc', width=1.5), name='RSI', hovertemplate='%{y:.3f}'), row=3, col=1)
         fig.add_hrect(y0=rsi_high, y1=100, fillcolor="red", opacity=0.1, layer="below", row=3, col=1)
         fig.add_hrect(y0=0, y1=rsi_low, fillcolor="green", opacity=0.1, layer="below", row=3, col=1)
