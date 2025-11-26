@@ -1,3 +1,4 @@
+# To run: E:/VSCode_Project/rent_project/.venv/Scripts/python.exe -m streamlit run E:/VSCode_Project/quant_research/app_new.py
 import streamlit as st
 import pandas as pd
 import os
@@ -277,14 +278,14 @@ if data is not None:
             """)
 
         with st.container():
-            st.markdown('<div class="content-card">', unsafe_allow_html=True)
+            # st.markdown('<div class="content-card">', unsafe_allow_html=True)
             st.markdown("### 📋 详细绩效对比表")
             st_table = style_dataframe(period_summary)
-            st.dataframe(st_table, use_container_width=True)
+            st.dataframe(st_table, width='stretch')
             st.markdown('</div>', unsafe_allow_html=True)
 
         with st.container():
-            st.markdown('<div class="content-card">', unsafe_allow_html=True)
+            # st.markdown('<div class="content-card">', unsafe_allow_html=True)
             st.markdown("### 📈 策略全景走势图")
             with st.spinner("正在绘制交互式图表..."):
                 # [核心修复] 将动态阈值参数传递给 Visualizer，确保图表与侧边栏设置一致
@@ -297,7 +298,7 @@ if data is not None:
                     rsi_low=in_rsi_under
                 )
                 fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                st.plotly_chart(fig, use_container_width=True, height=1000)
+                st.plotly_chart(fig, width='stretch')
             st.markdown('</div>', unsafe_allow_html=True)
 
         # --- 指标说明与公式 ---
