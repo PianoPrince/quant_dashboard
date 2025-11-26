@@ -10,8 +10,7 @@ class Visualizer:
     """
 
     @staticmethod
-    def plot_backtest_result(df: pd.DataFrame, filename: str = None, 
-                             strong_th=1.4, weak_th=1.7, rsi_high=70, rsi_low=30):
+    def plot_backtest_result(df: pd.DataFrame, filename: str = None, strong_th=1.4, weak_th=1.7, rsi_high=70, rsi_low=30):
         """
         绘制全功能回测报告
         
@@ -113,3 +112,4 @@ class Visualizer:
         if filename:
             fig.write_html(filename)
         return fig
+
