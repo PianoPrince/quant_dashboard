@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 class VectorBacktester:
-    def __init__(self, commission: float = 0.0002, slippage: float = 0.0, initial_principal: float = 1_000_000.0, risk_free_rate: float = 0.03):
+    def __init__(self, commission: float = 0.0002, slippage: float = 0.0, initial_principal: float = 1_000_000.0, risk_free_rate: float = 0.018):
         """
         :param commission: 交易佣金费率
         :param slippage: 滑点费率
@@ -236,3 +236,4 @@ class VectorBacktester:
             'Win Rate': win_rate,
             'Profit Factor': profit_factor,
         }
+
