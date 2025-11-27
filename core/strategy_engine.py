@@ -264,8 +264,8 @@ class FRAMA_RSI_bb_Strategy:
         ]
         
         choices = [
-            0.0,
-            1.0,
+            0.2,
+            0.9,
             0.6,
             0.4
         ]
@@ -276,5 +276,6 @@ class FRAMA_RSI_bb_Strategy:
             choicelist=choices,
             default=0.0  # 默认空仓
         )
+
 
         return self.df
