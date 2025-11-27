@@ -275,29 +275,12 @@ if data is not None:
             **仓位决策优先级**: 
             $$ \\text{强清仓 (0.0)} > \\text{强买入 (1.0)} > \\text{普买/触底 (0.6)} > \\text{减仓/触顶 (0.4)} $$
             """)
-
+        
         with st.container():
             # st.markdown('<div class="content-card">', unsafe_allow_html=True)
             st.markdown("### 📋 详细绩效对比表")
             st_table = style_dataframe(period_summary)
             st.dataframe(st_table, width='stretch', height= 35 * (len(period_summary) + 1) + 3)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        with st.container():
-            # st.markdown('<div class="content-card">', unsafe_allow_html=True)
-            st.markdown("### 📈 策略全景走势图")
-            with st.spinner("正在绘制交互式图表..."):
-                # [核心修复] 将动态阈值参数传递给 Visualizer，确保图表与侧边栏设置一致
-                fig = Visualizer.plot_backtest_result(
-                    period_df, 
-                    filename=None,
-                    strong_th=in_strong_th,
-                    weak_th=Config.THRESHOLD_WEAK_TREND,
-                    rsi_high=in_rsi_over,
-                    rsi_low=in_rsi_under
-                )
-                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                st.plotly_chart(fig, width='stretch')
             st.markdown('</div>', unsafe_allow_html=True)
 
         # --- 指标说明与公式 ---
@@ -321,5 +304,23 @@ if data is not None:
             </div>
             """, unsafe_allow_html=True)
             
+        with st.container():
+            # st.markdown('<div class="content-card">', unsafe_allow_html=True)
+            st.markdown("### 📈 策略全景走势图")
+            with st.spinner("正在绘制交互式图表..."):
+                # [核心修复] 将动态阈值参数传递给 Visualizer，确保图表与侧边栏设置一致
+                fig = Visualizer.plot_backtest_result(
+                    period_df, 
+                    filename=None,
+                    strong_th=in_strong_th,
+                    weak_th=Config.THRESHOLD_WEAK_TREND,
+                    rsi_high=in_rsi_over,
+                    rsi_low=in_rsi_under
+                )
+                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig, width='stretch')
+            st.markdown('</div>', unsafe_allow_html=True)
+            
     else:
         st.warning("所选区间无数据。")
+
