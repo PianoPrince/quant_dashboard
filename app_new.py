@@ -254,26 +254,67 @@ if data is not None:
         with col4: st.markdown(metric_card("Alpha 超额", f"{alpha:.2%}", alpha), unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True) 
 
-        # [新增] 策略逻辑展示区域
+        # 策略逻辑展示区域
         with st.expander("📖 策略逻辑详细说明 (Strategy Logic)", expanded=False):
             st.markdown("""
-            **核心策略：FRAMA + RSI + Bollinger Bands 多因子混合**
+            **核心策略：FRAMA + RSI + Bollinger Bands 多因子混合策略**
             
-            1.  **趋势识别 (FRAMA)**:
-                * 利用分形自适应均线 (FRAMA) 判断市场主趋势。
-                * **强趋势**: 当分形维数 $D < D_{strong}$ (当前设为 **""" + str(in_strong_th) + """**) 时，视为强趋势状态。
+            ### 1. 趋势识别模块 (FRAMA - Fractal Adaptive Moving Average)
             
-            2.  **动量过滤 (RSI)**:
-                * **超买**: $RSI > RSI_{high}$ (当前设为 **""" + str(in_rsi_over) + """**)，提示回调风险，限制追高。
-                * **超卖**: $RSI < RSI_{low}$ (当前设为 **""" + str(in_rsi_under) + """**)，提示反弹机会。
+            **数学定义**：
+            - **价格波幅计算**：$N_{total} = \\max(H_{window}) - \\min(L_{window})$
+            - **分形维数**：$D = \\frac{\\log_2(N_1 + N_2)}{\\log_2(N_3)} + 1$，其中 $D \\in [1.0, 2.0]$
+            - **动态平滑系数**：$\\alpha = \\exp(-4.6 \\times (D - 1))$，且 $\\alpha \\geq \\frac{2}{N_{slow} + 1}$
+            - **FRAMA迭代公式**：$FRAMA_t = \\alpha_t \\times Close_t + (1 - \\alpha_t) \\times FRAMA_{t-1}$
             
-            3.  **均值回归 (Bollinger)**:
-                * 利用布林带捕捉极端价格行为。
-                * **强清仓**: 高波动状态下从上轨回落。
-                * **强买入**: 低波动状态下突破下轨反转。
-                
-            **仓位决策优先级**: 
-            $$ \\text{强清仓 (0.0)} > \\text{强买入 (1.0)} > \\text{普买/触底 (0.6)} > \\text{减仓/触顶 (0.4)} $$
+            **趋势状态判定**：
+            - **强趋势条件**：$Close \\geq FRAMA \\text{ AND } D < """ + str(in_strong_th) + """$
+            - **趋势破坏条件**：$Close < FRAMA$
+            
+            ### 2. 动量过滤模块 (RSI - Relative Strength Index)
+            
+            **数学定义**（周期=14）：
+            - **上涨幅度**：$U_t = \\max(Close_t - Close_{t-1}, 0)$
+            - **下跌幅度**：$D_t = \\max(Close_{t-1} - Close_t, 0)$
+            - **平均值计算**：$AvgU = EMA(U, 14)$，$AvgD = EMA(D, 14)$
+            - **RSI公式**：$RSI = 100 \\times \\frac{AvgU}{AvgU + AvgD}$
+            
+            **动量状态判定**：
+            - **超买阈值**：$RSI > """ + str(in_rsi_over) + """$（限制追高）
+            - **超卖阈值**：$RSI < """ + str(in_rsi_under) + """$（提示机会）
+            - **健康动量**：$RSI \\leq """ + str(in_rsi_over) + """$
+            
+            ### 3. 波动性分析模块 (Bollinger Bands)
+            
+            **数学定义**（窗口=20，标准差倍数=2）：
+            - **中轨**：$MB = SMA(Close, 20)$
+            - **标准差**：$\\sigma = \\text{StdDev}(Close, 20)$
+            - **上轨**：$UB = MB + 2 \\times \\sigma$
+            - **下轨**：$LB = MB - 2 \\times \\sigma$
+            - **带宽**：$BW = \\frac{UB - LB}{MB}$
+            - **平均带宽**：$BW_{MA} = SMA(BW, 20)$
+            
+            **波动性状态判定**：
+            - **低波动条件**：$BW < (BW_{MA} \\times 0.8)$
+            - **高波动条件**：$BW > (BW_{MA} \\times 1.5)$
+            
+            ### 4. 仓位决策逻辑 (优先级顺序)
+            
+            **决策规则**（按优先级从高到低）：
+            
+            | 优先级 | 决策条件 | 目标仓位 | 数学表达式 |
+            |--------|----------|----------|------------|
+            | 1 (最高) | **强清仓** | 0.0 | $(Close < FRAMA) \\text{ OR } [BW > (BW_{MA} \\times 1.5) \\text{ AND } Close_t < Close_{t-1} \\text{ AND } Close_{t-1} \\geq UB_{t-1}]$ |
+            | 2 | **强买入** | 1.0 | $[BW < (BW_{MA} \\times 0.8) \\text{ AND } Close_t > Close_{t-1} \\text{ AND } Close_{t-1} \\leq LB_{t-1}] \\text{ OR } [(D < """ + str(in_strong_th) + """) \\text{ AND } (RSI \\leq """ + str(in_rsi_over) + """)]$ |
+            | 3 | **普买/触底** | 0.6 | $(Close \\leq LB) \\text{ OR } [(D < 1.7) \\text{ AND } (RSI \\leq """ + str(in_rsi_over) + """)]$ |
+            | 4 | **减仓/触顶** | 0.4 | $(Close \\geq UB) \\text{ OR } (RSI > """ + str(in_rsi_over) + """)$ |
+            | 默认 | **空仓观望** | 0.0 | 未满足上述任何条件 |
+            
+            **策略核心原则**：
+            1. **风险控制优先**：强清仓条件具有最高优先级，确保及时规避重大风险
+            2. **趋势跟随**：在强趋势且动量健康时满仓参与
+            3. **波动性自适应**：根据市场波动状态（带宽指标）调整交易策略
+            4. **多因子验证**：单一指标不足以触发交易，需多个因子协同确认
             """)
         
         with st.container():
@@ -323,4 +364,5 @@ if data is not None:
             
     else:
         st.warning("所选区间无数据。")
+
 
